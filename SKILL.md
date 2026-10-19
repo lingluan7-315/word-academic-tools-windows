@@ -1,13 +1,19 @@
 ---
-name: zotero-word-citations-windows
-description: Insert real Zotero live citation fields into Microsoft Word on Windows. Use when working with Zotero Desktop, Word .docx documents, Zotero Word plugin macros, local Zotero API localhost:23119, CSL styles, Zotero item keys/item IDs, or when a user asks Codex to add Zotero citations/references to Word rather than static text.
+name: word-academic-tools-windows
+description: Manage editable MathType equations and live Zotero or EndNote citations in Microsoft Word on Windows. Use for Word equation conversion, citation insertion and refresh, and EndNote CWYW conversion. Not for general prose editing alone.
 ---
 
-# Zotero Word Citations Windows
+# Word Academic Tools for Windows
 
-Use this skill to insert Zotero Word fields through Zotero's own Word integration. Do not synthesize Word field XML or insert plain citation text when the user asks for Zotero citations in Word.
+Use this skill for editable equations and live citations in Windows Word. Select the requested tool rather than treating every task as a Zotero task.
 
-## Workflow
+- **MathType:** Read `references/mathtype-endnote-windows.md` and use `scripts/mathtype_word_windows.py` to convert supported native Word equations into a new document.
+- **EndNote:** Read `references/mathtype-endnote-windows.md` and use `scripts/endnote_word_windows.py` for Word native citation conversion through CWYW. Existing Zotero citations require metadata mapping and reconstruction first; the helper rejects them.
+- **Zotero:** Follow the workflow below and use `scripts/zotero_word_windows.py` for live citation insertion and refresh.
+
+Do not synthesize citation field XML or substitute plain text for requested live citations. Run only the mode authorized by the user's request.
+
+## Zotero workflow
 
 1. Check readiness:
 
@@ -16,6 +22,8 @@ python scripts/zotero_word_windows.py check
 ```
 
 2. If the bridge endpoint is missing, install and register the local Zotero bridge, then restart Zotero:
+
+   Exit Zotero normally before `--register` changes `extensions.json`; never force-terminate Zotero. The extension manifest is the single source for package version and compatibility. Bridge 0.3.0 was tested with Zotero 10.0.6 and Word 2019 on Windows on 2026-10-17; its upper bound is `10.0.*`.
 
 ```powershell
 python scripts/zotero_word_windows.py install-bridge --register
@@ -55,7 +63,7 @@ The helper supports the reliable same-field workflow directly:
 python scripts/zotero_word_windows.py insert --docx "E:\Temp\paper.docx" --item-keys KEY1 KEY2 KEY3 --style Myself --marker "{{CITATION_GROUP_1}}" --save --close
 ```
 
-This inserts the first item at the marker, then selects that resulting Zotero field and uses `ZoteroAddEditCitation` to add the remaining items to the same field. The current `inject-current-get` bridge route accepts one item per request; the final Word field is nevertheless a single Zotero citation field and its separators/order remain Zotero-managed. Do not use a loop that inserts separate fields at the marker and then writes semicolons between them.
+This inserts the first item at the marker, then selects that resulting Zotero field and uses `ZoteroAddEditCitation` to add the remaining items to the same field. The helper snapshots existing citation IDs and identifies the new field again after each edit, because Zotero can replace its citation ID. Never locate this target by item key: the same reference may already occur in earlier fields. The current `inject-current-get` bridge route accepts one item per request; the final Word field is nevertheless a single Zotero citation field and its separators/order remain Zotero-managed. Do not use a loop that inserts separate fields at the marker and then writes semicolons between them.
 
 If no marker is provided, the script opens the document and inserts at the end unless Word already has another active selection:
 
@@ -71,7 +79,7 @@ python scripts/zotero_word_windows.py insert --docx "E:\Temp\paper.docx" --item-
 - Style names are resolved against installed Zotero CSL files by style ID, title, filename, and file stem. The shorthand `Myself` resolves to `http://www.zotero.org/styles/Myself-AuthorYear` when that CSL is installed; use `styles` to inspect alternatives such as `Myself-NWAFU`.
 - On first citation in a document, Zotero may open Document Preferences. The bridge accepts it and applies the requested style. If Quick Format does not appear immediately afterward, `insert` automatically retries once; pass `--no-retry-preferences` only when debugging that flow.
 - After calling the Word macro, wait until the bridge reports `integrationDocPrefs.xhtml`, `quickFormat.xhtml`, or `citationDialog.xhtml`. Do not inject while `currentWindowURL` is `about:blank`; this transient state is a common cause of false failures.
-- For grouped citations, select the existing Zotero field before calling `ZoteroAddEditCitation`; the Zotero 9 citation dialog appends the new item to that field. Reuse the first item's key to locate the field and save only after the complete group has been added.
+- For grouped citations, select the target Zotero field before calling `ZoteroAddEditCitation`; the Zotero 10 citation dialog appends the new item to that field. Use the citation IDs absent from the pre-insertion snapshot to locate the new field, and save only after the complete group has been added.
 - Word ownership safety: the helper first checks for an existing Word instance. If the requested document is already open there, it reuses that document and never closes the document or the user's Word application. If the document is not already open, it creates an isolated Word instance for the operation; `--close` closes and quits only that script-owned instance. Never use `Stop-Process -Name WINWORD` as cleanup because it can terminate the user's manually opened Word windows.
 - If the same document is open in another Word instance that COM cannot identify, do not force-close Word. Ask the user to activate that document or close the duplicate instance, then retry; a file-lock or read-only error is safer than touching an unowned process.
 - Use `--marker` for generated documents instead of relying on document-end insertion. The marker text is removed and replaced by the Zotero citation field.
@@ -93,3 +101,7 @@ python scripts/zotero_word_windows.py bridge-status
 ```
 
 Use `--item-id` directly if the Zotero numeric `itemID` is already known. Use `--locator`, `--label`, `--prefix`, `--suffix`, and `--suppress-author` for citation details.
+
+## MathType and EndNote details
+
+When the user explicitly requests MathType equations or EndNote CWYW, read `references/mathtype-endnote-windows.md`. These companion scripts create new output files and must not be applied to a user's manuscript merely because this skill is active. Zotero citations, EndNote CWYW fields, and Word native citations are different representations; RIS export alone does not convert Word fields.

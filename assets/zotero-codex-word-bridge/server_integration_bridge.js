@@ -1,6 +1,6 @@
 // CODEx_ZOTERO_WORD_BRIDGE_BEGIN
 (function () {
-  const BRIDGE_VERSION = "0.2.3";
+  const BRIDGE_VERSION = "0.3.0";
   const DEFAULT_STYLE_ID = "http://www.zotero.org/styles/apa";
   const WORD_AGENT = "MacWord16";
   const WORD_DOCUMENT_ID = __CODEX_WORD_DOCUMENT_ID__;

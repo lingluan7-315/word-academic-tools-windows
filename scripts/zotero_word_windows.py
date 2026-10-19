@@ -100,7 +100,6 @@ def install_bridge(register: bool) -> Dict[str, Any]:
                 zf.writestr(rel, render_bridge(path.read_text(encoding="utf-8")))
             elif rel == "manifest.json":
                 manifest = json.loads(path.read_text(encoding="utf-8"))
-                manifest["applications"]["zotero"]["strict_max_version"] = "9.*"
                 zf.writestr(rel, json.dumps(manifest, ensure_ascii=False, indent=2))
             else:
                 zf.write(str(path), rel)
@@ -116,12 +115,14 @@ def register_extension(profile: Optional[Path] = None, xpi: Optional[Path] = Non
     ext_json = profile / "extensions.json"
     backup = profile / ("extensions.json.codex-word-bridge-backup-%d" % int(time.time()))
     data = json.loads(ext_json.read_text(encoding="utf-8"))
+    manifest = json.loads((skill_root() / "assets" / "zotero-codex-word-bridge" / "manifest.json").read_text(encoding="utf-8"))
+    compatibility = manifest["applications"]["zotero"]
     addons = [addon for addon in data.get("addons", []) if addon.get("id") != ADDON_ID]
     now_ms = int(time.time() * 1000)
     addons.append({
         "id": ADDON_ID,
         "syncGUID": "{codex-word-bridge-local}",
-        "version": "0.2.3",
+        "version": manifest["version"],
         "type": "extension",
         "loader": None,
         "manifestVersion": 2,
@@ -138,7 +139,7 @@ def register_extension(profile: Optional[Path] = None, xpi: Optional[Path] = Non
         "updateDate": now_ms,
         "path": str(xpi),
         "strictCompatibility": True,
-        "targetApplications": [{"id": "zotero@zotero.org", "minVersion": "7.0", "maxVersion": "9.*"}],
+        "targetApplications": [{"id": "zotero@zotero.org", "minVersion": compatibility["strict_min_version"], "maxVersion": compatibility["strict_max_version"]}],
         "signedState": 0,
         "seen": True,
         "rootURI": "jar:file:///%s!/" % str(xpi).replace("\\", "/").replace(" ", "%20"),
@@ -332,12 +333,14 @@ def wait_for_refresh(timeout: int) -> Dict[str, Any]:
     raise RuntimeError("Zotero refresh did not complete; observed_busy=%s last=%s" % (observed_busy, last))
 
 
-def select_zotero_field(doc: Any, item_key: str) -> None:
+def zotero_citation_fields(doc: Any) -> Dict[str, Any]:
+    fields = {}
     for field in doc.Fields:
-        if "ZOTERO_ITEM" in field.Code.Text and item_key in field.Code.Text:
-            field.Select()
-            return
-    raise RuntimeError("Zotero citation field not found for item key: %s" % item_key)
+        code = field.Code.Text
+        if "ZOTERO_ITEM CSL_CITATION" in code:
+            citation = json.loads(code.split("CSL_CITATION", 1)[1])
+            fields[citation["citationID"]] = field
+    return fields
 
 
 def run_insert(word: Any, args: argparse.Namespace, item_id: int, style_id: str) -> Dict[str, Any]:
@@ -369,6 +372,7 @@ def insert(args: argparse.Namespace) -> Dict[str, Any]:
     style = resolve_style(args.style)
     word, doc, opened_by_script, word_owned = open_word(args.docx, bool(args.docx) and args.position == "end", args.marker, args.close)
     try:
+        previous_ids = set(zotero_citation_fields(doc))
         try:
             result = run_insert(word, args, item_ids[0], style["resolved"])
         except RuntimeError as error:
@@ -379,9 +383,11 @@ def insert(args: argparse.Namespace) -> Dict[str, Any]:
             else:
                 raise
         for index, item_id in enumerate(item_ids[1:], start=1):
-            if not item_keys:
-                raise RuntimeError("Grouped insertion requires Zotero item keys so the existing field can be located")
-            select_zotero_field(doc, item_keys[0])
+            inserted_ids = set(zotero_citation_fields(doc)) - previous_ids
+            if len(inserted_ids) != 1:
+                raise RuntimeError("Could not identify the newly inserted citation field: %s" % sorted(inserted_ids))
+            citation_id = inserted_ids.pop()
+            zotero_citation_fields(doc)[citation_id].Select()
             result["append_%d" % index] = run_insert(word, args, item_id, style["resolved"])
         if args.save:
             doc.Save()

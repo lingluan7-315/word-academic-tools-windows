@@ -1,4 +1,4 @@
 interface:
-  display_name: "Zotero Word Citations Windows"
-  short_description: "Insert live Zotero citations into Word on Windows."
-  default_prompt: "Use $zotero-word-citations-windows to insert a live Zotero citation into my Word document."
+  display_name: "Word Academic Tools for Windows"
+  short_description: "MathType equations and Zotero or EndNote citations."
+  default_prompt: "Use $word-academic-tools-windows to handle MathType equations or live Zotero/EndNote citations in my Word document."
