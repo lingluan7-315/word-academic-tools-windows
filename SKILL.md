@@ -8,8 +8,10 @@ description: Manage editable MathType equations and live Zotero or EndNote citat
 Use this skill for editable equations and live citations in Windows Word. Select the requested tool rather than treating every task as a Zotero task.
 
 - **MathType:** Read `references/mathtype-endnote-windows.md` and use `scripts/mathtype_word_windows.py` to convert supported native Word equations into a new document.
-- **EndNote:** Read `references/mathtype-endnote-windows.md` and use `scripts/endnote_word_windows.py` for Word native citation conversion through CWYW. Existing Zotero citations require metadata mapping and reconstruction first; the helper rejects them.
+- **EndNote or Zotero → EndNote:** Read `references/citation-migration.md` first. Audit the saved source and test the requested style/author behavior on a small copy before reconstructing the manuscript. `scripts/endnote_word_windows.py --check --input source.docx` identifies unsupported inputs without opening Word; the converter accepts Word native citations, not Zotero fields.
 - **Zotero:** Follow the workflow below and use `scripts/zotero_word_windows.py` for live citation insertion and refresh.
+
+For custom bilingual formats, style changes, or requests to leave everything else untouched, also read `references/citation-migration.md`. Use `scripts/citation_audit.py --input source.docx` for a read-only baseline; `--compare output.docx` checks saved field identities and document preservation. Its JSON can contain private reference metadata: keep reports and manuscript files out of published skill bundles.
 
 Do not synthesize citation field XML or substitute plain text for requested live citations. Run only the mode authorized by the user's request.
 
@@ -104,4 +106,4 @@ Use `--item-id` directly if the Zotero numeric `itemID` is already known. Use `-
 
 ## MathType and EndNote details
 
-When the user explicitly requests MathType equations or EndNote CWYW, read `references/mathtype-endnote-windows.md`. These companion scripts create new output files and must not be applied to a user's manuscript merely because this skill is active. Zotero citations, EndNote CWYW fields, and Word native citations are different representations; RIS export alone does not convert Word fields.
+For MathType, read `references/mathtype-endnote-windows.md`; for EndNote or citation migration, read `references/citation-migration.md`. Companion scripts create new output files and must not be applied to a manuscript merely because this skill is active. Zotero citations, EndNote CWYW fields, and Word native citations are different representations; RIS export alone does not convert Word fields.

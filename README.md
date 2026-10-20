@@ -1,8 +1,8 @@
 # Word Academic Tools for Windows / Windows Word 学术工具
 
-The skill is now named `word-academic-tools-windows`. This repository retains its original URL, `zotero-word-citations-windows`.
+The skill and repository are now named `word-academic-tools-windows`.
 
-本 skill 已从 `zotero-word-citations-windows` 迁移为 `word-academic-tools-windows`，整合 Zotero 动态引文、MathType 可编辑公式和 EndNote CWYW 转换；仓库地址保持不变。
+本 skill 与仓库均已从 `zotero-word-citations-windows` 更名为 `word-academic-tools-windows`，整合 Zotero 动态引文、MathType 可编辑公式和 EndNote CWYW 转换。
 
 ## Features / 功能
 
@@ -13,6 +13,8 @@ The skill is now named `word-academic-tools-windows`. This repository retains it
 - Provide a local bridge for reliable Zotero Word integration. / 提供用于稳定集成 Zotero 与 Word 的本地桥接。
 - Convert supported native Word equations to editable MathType OLE objects in a new document. / 将支持的 Word 原生公式转换为新文档中的可编辑 MathType OLE 对象。
 - Convert Word native citations through EndNote's official CWYW macros in a new document. / 通过 EndNote 官方 CWYW 宏将 Word 原生引文转换到新文档。
+- Preflight saved citation fields and installed EndNote styles before opening Word; bound CWYW calls with a timeout. / 打开 Word 前检查引文与 EndNote 样式，为 CWYW 调用设置超时。
+- Audit grouped references, DOI, citation options and DOCX preservation. / 只读核验引用组、DOI、引文选项及 DOCX 内容保持情况。
 
 ## Requirements / 使用要求
 
@@ -32,7 +34,7 @@ Zotero 功能需要 Zotero Desktop 及其 Word 插件；MathType、EndNote 功�
 Install into a folder matching the new skill name:
 
 ```powershell
-git clone https://github.com/lingluan7-315/zotero-word-citations-windows.git "$env:USERPROFILE\.codex\skills\word-academic-tools-windows"
+git clone https://github.com/lingluan7-315/word-academic-tools-windows.git "$env:USERPROFILE\.codex\skills\word-academic-tools-windows"
 python -m pip install pywin32
 ```
 
@@ -57,12 +59,24 @@ If the bridge is missing, exit Zotero normally before running `python scripts/zo
 
 ```powershell
 python scripts/mathtype_word_windows.py --input source.docx --output new-mathtype.docx --pdf new-preview.pdf
+python scripts/endnote_word_windows.py --check --input native-word-citations.docx
 python scripts/endnote_word_windows.py --input native-word-citations.docx --output new-endnote.docx
+python scripts/citation_audit.py --input source.docx --compare new-endnote.docx --report comparison.json
 ```
 
 MathType conversion supports main-body equations under the limits documented in [the companion reference](references/mathtype-endnote-windows.md). EndNote conversion accepts Word native `CITATION` fields; it rejects existing Zotero fields, which require metadata mapping and reconstruction first. Both helpers require new output filenames and preserve the source document.
 
 MathType 支持范围及验证要求见详细说明。EndNote 脚本不能直接转换 Zotero 引文；RIS 导出也不能完成 Word 引文域转换。请先在副本中检查公式、引文和参考文献的结果。
+
+## Citation migration / 引文迁移
+
+Read [the migration workflow](references/citation-migration.md) for Zotero → EndNote mapping, custom bilingual formats, and strict preservation. Test language-specific punctuation and native Author updates on a small copy first. A preformatted Custom field does not regenerate when Author changes; EndNote X9's tested Author Lists settings also imposed limits on mixed Chinese/English separators. The skill reports those limits before bulk conversion.
+
+EndNote preflight checks the saved EN.Layout style against discovered or explicitly supplied `--style-dir` folders; confirm custom folders in EndNote Preferences. `--refresh-only` refreshes existing EndNote fields into a new file. `--timeout 180` bounds the worker and writes a status report; a modal Word instance may need normal manual cleanup after timeout. No blanket process termination is used.
+
+The read-only audit is conservative: unknown identities, unsupported field boundaries, or other changed DOCX parts need review and do not automatically pass. Metadata and layout review remain necessary. Reports can contain private citation data; do not commit manuscript files or audit reports to this repository.
+
+Offline regression checks (synthetic documents only): `python -m unittest discover -s tests -v`.
 
 ## License / 许可证
 

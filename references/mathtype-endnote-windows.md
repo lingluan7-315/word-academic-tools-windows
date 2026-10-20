@@ -1,6 +1,6 @@
 # MathType and EndNote Windows integration
 
-Tested locally on 2026-10-17: MathType 7.4.4, EndNote X9 19.0.0.12062, Word 2019 64-bit, Zotero 10.0.6. Use 64-bit Python with `comtypes`, `pywin32`, and `lxml` (the tested system Python is `D:\python\python.exe`). Word COM needs host access outside the ordinary desktop sandbox. Never close or terminate the user's existing Word instance; each helper creates and closes its own instance. No Computer Use is needed.
+Tested locally on 2026-10-17: MathType 7.4.4, EndNote X9 19.0.0.12062, Word 2019 64-bit, Zotero 10.0.6. Use 64-bit Python with `comtypes`, `pywin32`, and `lxml`. Word COM needs host access outside the ordinary desktop sandbox. Never close or terminate the user's existing Word instance. Helpers use their own Word instance; on a blocked EndNote macro, the timeout supervisor may leave that instance open for normal manual cleanup. No Computer Use is needed.
 
 ## MathType
 
@@ -14,12 +14,10 @@ Limitations: installed paths are specific to this machine; only main-body equati
 
 ## EndNote
 
-`python scripts/endnote_word_windows.py --input native-word-citations.docx --output new-endnote.docx`
+Read [citation-migration.md](citation-migration.md) before EndNote conversion or Zotero → EndNote migration. It covers style discovery, bilingual Author limitations, library identity, timeout handling, and preservation checks.
 
-The helper accepts Word native `CITATION` fields with embedded document bibliography sources. It calls the installed official CWYW macros `EndNoteMacros.ENConvertWordCitations` and `EndNoteMacros.ENFormatBibliography`, then saves EndNote-generated fields. A smoke test produced a real `ADDIN EN.CITE` field and `ADDIN EN.REFLIST` bibliography and refreshed them. Do not synthesize EndNote field XML or relabel static text as live citations.
+`python scripts/endnote_word_windows.py --check --input native-word-citations.docx`
 
-Long/grouped citations can use nested `EN.CITE.DATA` fields. Their `Field.Data` is raw UTF-8 bytes carried in a COM UTF-16 string; decode with `data.encode('utf-16le', errors='surrogatepass').rstrip(b'\x00').decode('utf-8')` for read-only inspection. An empty display result on the DATA field does not mean the grouped reference data is missing.
+The helper accepts Word native `CITATION` fields with embedded document bibliography sources. The official CWYW macros generate the live fields. Zotero input is rejected in the read-only preflight; existing EndNote fields use `--refresh-only` into a new file. No raw EndNote field XML is synthesized.
 
-Zotero-to-EndNote route was independently proved on a test copy: read the actual Zotero citationItems/itemData and grouping; create matching Word document bibliography sources and native citations; call the official EndNote conversion macro; refresh; inspect the resulting EndNote data. A single citation remained one reference, a grouped citation remained three, and the bibliography held three unique records. Existing EndNote library matching supplied richer records in this local test. Neither RIS export nor renaming field codes performed the conversion.
-
-The EndNote helper intentionally rejects Zotero fields. The tested Zotero-to-Word mapper covered plain journal articles only and is not a general manuscript migration command. Before full migration, validate DOI/URLs, non-article types, Chinese and corporate author names, locators, prefixes/suffixes, author suppression, duplicate matching, bibliography ordering, style and a separately saved `.enl` library. A live traveling-library field is not proof that an independent EndNote library was created. Do not unlink the user's original Zotero citations; reconstruct only in a new copy after all locations and metadata have been mapped.
+Long/grouped EndNote citations may store their records in nested `EN.CITE.DATA` rather than inline field instructions. `citation_audit.py` decodes OOXML `w:fldData` from base64 to UTF-8. An empty display result on that nested field does not mean the group is empty. When inspecting COM `Field.Data` separately, recover its raw bytes from the COM UTF-16 representation before decoding UTF-8; do not apply that COM conversion to OOXML base64 data.
